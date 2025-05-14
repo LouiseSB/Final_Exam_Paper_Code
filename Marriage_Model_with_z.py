@@ -9,12 +9,16 @@ from scipy import integrate
 from pathlib import Path
 from scipy import stats
 import math
+import requests
+from io import BytesIO
 
 
-home = str(Path.home())
-Path = home + "/Library/CloudStorage/OneDrive-Personligt/Dokumenter/Universitetet/8. Semester/Micro and Macro Models of the Labour Market/Exam Paper"
-datapath = Path + "/Python"
+#home = str(Path.home())
+#Path = home + "/Library/CloudStorage/OneDrive-Personligt/Dokumenter/Universitetet/8. Semester/Micro and Macro Models of the Labour Market/Exam Paper"
+#datapath = Path + "/Python"
 
+url_m = "https://raw.githubusercontent.com/LouiseSB/Final_Exam_Paper_Code/refs/heads/main/income_distribution_male.csv"
+url_f = "https://raw.githubusercontent.com/LouiseSB/Final_Exam_Paper_Code/refs/heads/main/income_distribution_female.csv"
 
 
 
@@ -23,10 +27,13 @@ datapath = Path + "/Python"
 n_types = 50
 n = 50
 
-import_male = pd.read_csv(datapath+"/income_distribution_male.csv").to_numpy(copy=True)
+#import_male = pd.read_csv(datapath+"/income_distribution_male.csv").to_numpy(copy=True)
 # 50x2 - 50x[1] is income in currency and 50x[2] is the density 
-import_female = pd.read_csv(datapath+"/income_distribution_female.csv").to_numpy(copy=True)
+#import_female = pd.read_csv(datapath+"/income_distribution_female.csv").to_numpy(copy=True)
 # same just for women meaning that 50x[1] is exactly the same as for male 
+
+import_male = pd.read_csv(url_m).to_numpy(copy=True)
+import_female = pd.read_csv(url_f).to_numpy(copy=True)
 
 
 #%% Define functions 

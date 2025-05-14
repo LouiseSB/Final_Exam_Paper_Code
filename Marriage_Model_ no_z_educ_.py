@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
 # import packages and set directory 
 
@@ -7,27 +9,32 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy import integrate
 from pathlib import Path
+import requests
+from io import BytesIO
 
 
 
 #home = str(Path.home())
-#Path = home + "/Library/CloudStorage/OneDrive-Personligt/Dokumenter/Universitetet/8. Semester/Micro and Macro Models of the Labour Market/Exam Paper"
-#datapath = Path + "/Python"
+#Path = home + "/Documents/GitHub/MMLM"
+#datapath = Path + "/Data:code"
 
-url_m = "https://raw.githubusercontent.com/LouiseSB/Final_Exam_Paper_Code/refs/heads/main/income_distribution_male.csv"
-url_f = "https://raw.githubusercontent.com/LouiseSB/Final_Exam_Paper_Code/refs/heads/main/income_distribution_female.csv"
+url = "https://github.com/LouiseSB/Final_Exam_Paper_Code/raw/refs/heads/main/data_educ_age.xlsx"
+
+response = requests.get(url)
+xls_file = BytesIO(response.content)
+
 
 #%% import data (distribution of income for male and female)
 
-n_types = 50
+n_types = 80
 
-#import_male = pd.read_csv(datapath+"/income_distribution_male.csv").to_numpy(copy=True)
+#import_male = pd.read_excel(datapath+"/data_educ_age.xlsx").to_numpy(copy=True)
 # 50x2 - 50x[1] is income in currency and 50x[2] is the density 
-#import_female = pd.read_csv(datapath+"/income_distribution_female.csv").to_numpy(copy=True)
+#import_female = pd.read_excel(datapath+"/data_educ_age.xlsx").to_numpy(copy=True)
 # same just for women meaning that 50x[1] is exactly the same as for male 
 
-import_male = pd.read_csv(url_m).to_numpy(copy=True)
-import_female = pd.read_csv(url_f).to_numpy(copy=True)
+import_male = pd.read_excel(xls_file, engine='openpyxl').to_numpy(copy=True)
+import_female = pd.read_excel(xls_file, engine='openpyxl').to_numpy(copy=True)
 
 
 #%% Define functions 
@@ -59,12 +66,12 @@ def integrate_red(matrix, result, xstep): #integrating in 2 dimensions
         for i in range(0,n):
             inner[i,0] = np.squeeze(integrate_uni(matrix[i,:],xstep))
     return inner
-    # note that this does not return a matrix but an array (vector) 
+    # note that this does not return a matrix but a array (vector) 
 
 # production function (simple)
 def production_function(x,y):
     return x*y
-# we use a simple production function x*y meaning that the two imputs we insert will be multiplied 
+# we use a simple production function simply x*y meaning that the two imputs we insert will be multiplied 
 
 # Equation (11) and (12)
 def flow_update(dens_e, dens_u_o, alphas, c_delta, result, c_lambda, xstep): 
@@ -99,48 +106,39 @@ def flow_surplus(c, c_lambda, beta, r, delta, U, c_xy, s_o, s, u_o, result, xste
 # Define dictionary
 p = dict()
 
-# Model parameters
-#Nash-bargaining power
+# model parameters
+# Nash-barganing power
 p['c_beta'] = 0.5
-#Discount rate
+# Discount rate
 p['c_r']= 0.05
-# Divorce rate
+# Divorce rate 
 p['c_delta']=0.1
-# Meeting probability
+# Meeting probability 
 p['c_lambda']=1
 
 
 print(np.shape(import_male))
-p['xmin']= import_male[0,0] 
+p['xmin']= import_male[0,0]
 print('Lowest income grid point:', p['xmin'])
-p['xmax']= import_male[49,0]
+p['xmax']= import_male[79,0]
 print('Highest income grid point:', p['xmax'])
 p['xstep']= import_male[1,0] - import_male[0,0]
 print('stepsize:',p['xstep'])
-
-print(np.shape(import_female))
-p['xmin']= import_female[0,0] 
-print('Lowest income grid point:', p['xmin'])
-p['xmax']= import_female[49,0]
-print('Highest income grid point:', p['xmax'])
-p['ystep']= import_female[1,0] - import_female[0,0]
-print('stepsize:',p['ystep'])
-# Note that xstep=ystep
 
 # type space
 p['typespace_n'] = import_male[:,0]
 p['typespace'] = p['typespace_n']/np.min(p['typespace_n'])
 
 p['n_types']=n_types
-p['male_inc_dens'] = import_male[:,1]
-p['female_inc_dens'] = import_female[:,1]
+p['male_inc_dens'] = import_male[:,1] 
+p['female_inc_dens'] = import_female[:,2]
 
 
 #normalize densities
 #density function for all agents 
 e_m = p['male_inc_dens'] / integrate_uni(p['male_inc_dens'],p['xstep'])
 e_m.shape = (1, p['n_types'])
-e_f = p['female_inc_dens'] / integrate_uni(p['female_inc_dens'],p['ystep'])
+e_f = p['female_inc_dens'] / integrate_uni(p['female_inc_dens'],p['xstep'])
 e_f.shape = (p['n_types'],1)
 
 xgrid = p['typespace'].ravel() 
@@ -154,10 +152,10 @@ for xi in range(p['n_types']):
     for yi in range (p['n_types']):
         #absolute advantage as in shimer/smith
         c_xy[xi,yi]=production_function(p['typespace'][xi], p['typespace'][yi])
-         
+        
 c_x = np.zeros((1, p['n_types']))
 c_y = np.zeros((p['n_types'], 1))
-
+        
         
 for xi in range(p['n_types']):
     c_x[0,xi]=xgrid[xi]
@@ -170,43 +168,43 @@ values_s_f = np.zeros((n_types,n_types))
 
 alphas = np.ones([n_types, n_types])
 
-u_m = np.ones((1, p['n_types']))
-u_f = np.ones((p['n_types'], 1))
+u_m_1 = np.ones((1, p['n_types']))
+u_f_1 = np.ones((p['n_types'], 1))
 
 keep_iterating = True
 
 #main loop
 while keep_iterating:
     e = sys.float_info.max
-    u_m_prev = u_m
-    u_f_prev = u_f
+    u_m_prev = u_m_1
+    u_f_prev = u_f_1
     while e > 1e-12:
         
         
-        u_m = flow_update(e_m, u_m_prev, alphas, p['c_delta'], 'male', p['c_lambda'], p['xstep'])
-        u_f = flow_update(e_f, u_f_prev, alphas, p['c_delta'], 'female',p['c_lambda'], p['ystep'])
+        u_m_1 = flow_update(e_m, u_m_prev, alphas, p['c_delta'], 'male', p['c_lambda'], p['xstep'])
+        u_f_1 = flow_update(e_f, u_f_prev, alphas, p['c_delta'], 'female',p['c_lambda'], p['xstep'])
  
  
         e = max(
-        np.linalg.norm(u_m_prev - u_m),
-        np.linalg.norm(u_f_prev - u_f)
+        np.linalg.norm(u_m_prev - u_m_1),
+        np.linalg.norm(u_f_prev - u_f_1)
     )
         
-        u_m_prev = u_m
-        u_f_prev = u_f
+        u_m_prev = u_m_1
+        u_f_prev = u_f_1
         
-    int_U_m = integrate_uni(u_m, p['xstep'])
-    int_U_f = integrate_uni(u_f, p['ystep'])
+    int_U_m = integrate_uni(u_m_1, p['xstep'])
+    int_U_f = integrate_uni(u_f_1, p['xstep'])
     
     int_U_m_p = int_U_m
     int_U_f_p = int_U_f
 
     # Equation 18
-    s_m = flow_surplus(c_x, p['c_lambda'], p['c_beta'], p['c_r'], p['c_delta'], int_U_f_p, c_xy, values_s_f, values_s_m, u_f_prev, 'male', p['xstep'])
-    s_f = flow_surplus(c_y, p['c_lambda'], p['c_beta'], p['c_r'], p['c_delta'], int_U_m_p, c_xy, values_s_m, values_s_f, u_m_prev, 'female', p['ystep'])
+    s_m_1 = flow_surplus(c_x, p['c_lambda'], p['c_beta'], p['c_r'], p['c_delta'], int_U_f_p, c_xy, values_s_f, values_s_m, u_f_prev, 'male', p['xstep'])
+    s_f_1 = flow_surplus(c_y, p['c_lambda'], p['c_beta'], p['c_r'], p['c_delta'], int_U_m_p, c_xy, values_s_m, values_s_f, u_m_prev, 'female', p['xstep'])
     
-    values_s_m = s_m
-    values_s_f = s_f
+    values_s_m = s_m_1
+    values_s_f = s_f_1
     
      
     matrix = values_s_m + values_s_f
@@ -226,16 +224,15 @@ while keep_iterating:
             alphas = new_alphas
 
 
-#Joint density of matches
-n_xy = (p["c_lambda"]*u_m*u_f*alphas)/p["c_delta"]
+#Calculating joint density of matches
+n_xy = (p["c_lambda"]*u_m_1*u_f_1*alphas)/p["c_delta"]
 
-#Total surplus of marriage
+# total surplus of marrige 
 s_xy = c_xy - values_s_f - values_s_m
 
     
 #%% Plotting
 
-#Plot of alphas
 def wireframe_with_heatmap(z, space, azim, elev, title):
     """
     Displays a 3D wireframe plot next to a 2D heatmap.
@@ -269,11 +266,11 @@ def wireframe_with_heatmap(z, space, azim, elev, title):
 
     return fig
 
-# Plotting alphas
+# Example usage
 fig = wireframe_with_heatmap(alphas, p['typespace_n'], 250, 30, r'$\alpha(x,y)$')
-fig.savefig("alpha_wireframe_and_heatmap_no_z.png")    
+fig.savefig("alpha_wireframe_and_heatmap.png")
 
-#Plot of c_xy, s_xy and n_xy
+# plot of all three (c_xy, s_xy, n_xy)
 def plot_three_wireframes(z1, z2, z3, space, titles, elev=30, azim=250):
     """
     Plots 3 wireframe plots in a 2x2 layout:
@@ -309,7 +306,7 @@ def plot_three_wireframes(z1, z2, z3, space, titles, elev=30, azim=250):
         ax.dist = 10
 
     plt.tight_layout()
-    plt.savefig("all_wireframes_no_z.png")
+    plt.savefig("all_wireframes.png")
     plt.show()
 
 # Example usage
@@ -322,22 +319,19 @@ plot_three_wireframes(
 )
 
 
-#Plot of e_m(x)
-x = import_male[:,0]
-y = np.transpose(e_m)
 
-plt.plot(x,y)
-plt.xlabel("Income")
-plt.ylabel("e_m")
+x = np.linspace(0, 80, num=80)
+
+# Assuming e_f and e_m are arrays of length 79
+plt.plot(x, e_f, label='e_f (female type)')
+plt.plot(x, np.transpose(e_m), label='e_m (male type)')
+
+plt.xlabel("Type")
+plt.ylabel("Effort")
+plt.title("Effort by Type for Females and Males")
 plt.grid(True)
+plt.legend()
 plt.show()
 
-#Plot of e_f(y)
-x = import_female[:,0]
-y = e_f
 
-plt.plot(x,y)
-plt.xlabel("Income")
-plt.ylabel("e_f")
-plt.grid(True)
-plt.show()
+

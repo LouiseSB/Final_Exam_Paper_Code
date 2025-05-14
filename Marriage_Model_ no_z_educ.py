@@ -9,24 +9,32 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy import integrate
 from pathlib import Path
-from scipy import stats
-from mpl_toolkits.mplot3d import Axes3D
+import requests
+from io import BytesIO
 
 
 
-home = str(Path.home())
-Path = home + "/Documents/GitHub/MMLM"
-datapath = Path + "/Data:code"
+#home = str(Path.home())
+#Path = home + "/Documents/GitHub/MMLM"
+#datapath = Path + "/Data:code"
+
+url = "https://github.com/LouiseSB/Final_Exam_Paper_Code/raw/refs/heads/main/data_educ_age.xlsx"
+
+response = requests.get(url)
+xls_file = BytesIO(response.content)
 
 
 #%% import data (distribution of income for male and female)
 
 n_types = 80
 
-import_male = pd.read_excel(datapath+"/data_educ_age.xlsx").to_numpy(copy=True)
+#import_male = pd.read_excel(datapath+"/data_educ_age.xlsx").to_numpy(copy=True)
 # 50x2 - 50x[1] is income in currency and 50x[2] is the density 
-import_female = pd.read_excel(datapath+"/data_educ_age.xlsx").to_numpy(copy=True)
+#import_female = pd.read_excel(datapath+"/data_educ_age.xlsx").to_numpy(copy=True)
 # same just for women meaning that 50x[1] is exactly the same as for male 
+
+import_male = pd.read_excel(xls_file, engine='openpyxl').to_numpy(copy=True)
+import_female = pd.read_excel(xls_file, engine='openpyxl').to_numpy(copy=True)
 
 
 #%% Define functions 
